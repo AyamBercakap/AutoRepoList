@@ -29,6 +29,7 @@ export class RepoBuilder {
 
   async build() {
     const res = await fetch(this.jsonUrl);
+    if (!res.ok) throw new Error(`Failed to load ${this.jsonUrl}: ${res.status} ${res.statusText}`);
     let repos = await res.json();
 
     // Filters
