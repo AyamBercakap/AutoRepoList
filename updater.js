@@ -3,9 +3,9 @@ const fs = require('fs');
 const CONFIG = {
   outputFile: './repoList.json',
   verifyImageExists: true,
-  fallbackImageUrl: 'https://placehold.co',
+  fallbackImageUrl: 'https://placehold.co/600x400?text=?',
   buildImageUrl: (repo) =>
-    `https://githubusercontent.com{repo.owner.login}/${repo.name}/${repo.default_branch}/src/portfolio.jpg`
+    `https://raw.githubusercontent.com/${repo.owner.login}/${repo.name}/${repo.default_branch}/src/portfolio.jpg`
 };
 
 // Format date to dd-mm-yyyy
@@ -22,7 +22,7 @@ async function resolveImageUrl(repo, token) {
   const rawUrl = CONFIG.buildImageUrl(repo);
   if (!CONFIG.verifyImageExists) return rawUrl;
 
-  const apiCheckUrl = `https://github.com{repo.owner.login}/${repo.name}/contents/src/portfolio.jpg?ref=${repo.default_branch}`;
+  const apiCheckUrl = `https://api.github.com/repos/${repo.owner.login}/${repo.name}/contents/src/portfolio.jpg?ref=${repo.default_branch}`;
   const res = await fetch(apiCheckUrl, {
     method: 'HEAD',
     headers: {
