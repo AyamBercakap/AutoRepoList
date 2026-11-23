@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RepoBuilder test</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --text: #1d2330;
+    --muted: #667085;
+    --line: #dfe3ea;
+    --accent: #2457d6;
+    --accent-text: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171d;
+      --surface: #1c2029;
+      --text: #e8ebf1;
+      --muted: #9099a8;
+      --line: #2c3240;
+      --accent: #6b93ff;
+      --accent-text: #0e1320;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 48px;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 system-ui, sans-serif;
+  }
+  main { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 16px; }
+
+  .controls { display: grid; gap: 10px; margin-bottom: 20px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .row > span { color: var(--muted); font-size: 0.85rem; min-width: 56px; }
+
+  button {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 5px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+  }
+
+  #status { color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
+  #status.error { color: #c0392b; }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .repo {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .repo img {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    background: var(--line);
+    display: block;
+  }
+  .repo .body { padding: 12px 14px 14px; display: grid; gap: 6px; }
+  .repo h2 { margin: 0; font-size: 1rem; }
+  .repo h2 a { color: inherit; text-decoration: none; }
+  .repo h2 a:hover { color: var(--accent); }
+  .repo p { margin: 0; color: var(--muted); font-size: 0.88rem; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); font-size: 0.8rem; }
+  .tag {
+    font-size: 0.75rem;
+    padding: 1px 8px;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+  }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>RepoBuilder test</h1>
+
+  <div class="controls">
+    <div class="row" id="visibility"><span>Show</span></div>
+    <div class="row" id="forks"><span>Forks</span></div>
+    <div class="row" id="topics"><span>Topic</span></div>
+    <div class="row" id="sort"><span>Sort</span></div>
+  </div>
+
+  <div id="status">Loading…</div>
+  <div id="grid"></div>
+</main>
+
+<script type="module">
+  import { RepoBuilder } from './builder.js';
+
+  const state = {
+    includePrivate: true,
+    includeForks: false,
+    requiredTopic: null,
+    sortBy: 'updated-desc'
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $('status');
+  const grid = $('grid');
+
+  // Build a group of toggle buttons. options: [{ label, value }]
+  function makeGroup(containerId, options, key) {
+    const container = $(containerId);
+    options.forEach(({ label, value }) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = label;
+      btn.dataset.value = JSON.stringify(value);
+      btn.addEventListener('click', () => {
+        state[key] = value;
+        refreshPressed(containerId, key);
+        render();
+      });
+      container.appendChild(btn);
+    });
+    refreshPressed(containerId, key);
+  }
+
+  function refreshPressed(containerId, key) {
+    $(containerId).querySelectorAll('button').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(JSON.parse(btn.dataset.value) === state[key]));
+    });
+  }
+
+  function card(repo) {
+    const el = document.createElement('article');
+    el.className = 'repo';
+
+    const img = document.createElement('img');
+    img.src = repo.portfolioImg;
+    img.alt = '';
+    img.loading = 'lazy';
+
+    const body = document.createElement('div');
+    body.className = 'body';
+
+    const h2 = document.createElement('h2');
+    const a = document.createElement('a');
+    a.href = repo.repoUrl;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = repo.title;
+    h2.appendChild(a);
+
+    const desc = document.createElement('p');
+    desc.textContent = repo.description || 'No description';
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = '';
+    [repo.language, `★ ${repo.stars}`, repo.updated, repo.visibility].forEach((t) => {
+      const s = document.createElement('span');
+      s.textContent = t;
+      meta.appendChild(s);
+    });
+
+    const tags = document.createElement('div');
+    tags.className = 'tags';
+    (repo.topics || []).forEach((t) => {
+      const s = document.createElement('span');
+      s.className = 'tag';
+      s.textContent = t;
+      tags.appendChild(s);
+    });
+
+    body.append(h2, desc, meta, tags);
+    el.append(img, body);
+    return el;
+  }
+
+  async function render() {
+    statusEl.className = '';
+    try {
+      const repos = await new RepoBuilder()
+        .filter({
+          includePrivate: state.includePrivate,
+          includeForks: state.includeForks,
+          requiredTopic: state.requiredTopic
+        })
+        .sort(state.sortBy)
+        .build();
+
+      grid.replaceChildren(...repos.map(card));
+      statusEl.textContent = `${repos.length} repos`;
+    } catch (err) {
+      statusEl.className = 'error';
+      statusEl.textContent = `Failed to load: ${err.message}`;
+    }
+  }
+
+  async function init() {
+    // Fetch everything once so topic buttons can be generated from real data
+    let allTopics = [];
+    try {
+      const all = await new RepoBuilder().filter({ includePrivate: true, includeForks: true }).build();
+      allTopics = [...new Set(all.flatMap((r) => r.topics || []))].sort();
+    } catch (err) {
+      statusEl.className = 'error';
+      statusEl.textContent = `Failed to load: ${err.message}`;
+      return;
+    }
+
+    makeGroup('visibility', [
+      { label: 'Public + private', value: true },
+      { label: 'Public only', value: false }
+    ], 'includePrivate');
+
+    makeGroup('forks', [
+      { label: 'Hide forks', value: false },
+      { label: 'Include forks', value: true }
+    ], 'includeForks');
+
+    makeGroup('topics', [
+      { label: 'All', value: null },
+      ...allTopics.map((t) => ({ label: t, value: t }))
+    ], 'requiredTopic');
+
+    makeGroup('sort', [
+      { label: 'Recently updated', value: 'updated-desc' },
+      { label: 'Name A–Z', value: 'name-asc' },
+      { label: 'Most stars', value: 'stars-desc' }
+    ], 'sortBy');
+
+    render();
+  }
+
+  init();
+</script>
+</body>
+</html>
