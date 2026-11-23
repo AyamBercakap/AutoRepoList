@@ -5,12 +5,12 @@
     "isFork": false,
     "portfolioImg": "https://placehold.co/600x400?text=?",
     "updated": "23-11-2026",
-    "rawDate": "2026-11-23T02:09:10Z",
+    "rawDate": "2026-11-23T03:25:23Z",
     "topics": [],
     "description": "Automatically grabs repo every hour to be able to turn as a html element",
     "repoUrl": "https://github.com/AyamBercakap/AutoRepoList",
     "homepage": "",
-    "language": "JavaScript",
+    "language": "HTML",
     "stars": 0
   },
   {
